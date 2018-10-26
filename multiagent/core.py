@@ -124,6 +124,8 @@ class World(object):
         self.cache_dists = False
         self.cached_dist_vect = None
         self.cached_dist_mag = None
+        # whether or not to clip positions to constraint the agents to the visible screen
+        self.clip_positions = False
 
     # return all entities in the world
     @property
@@ -245,6 +247,8 @@ class World(object):
                     entity.state.p_vel = entity.state.p_vel / np.sqrt(np.square(entity.state.p_vel[0]) +
                                                                   np.square(entity.state.p_vel[1])) * entity.max_speed
             entity.state.p_pos += entity.state.p_vel * self.dt
+            if self.clip_positions:
+                entity.state.p_pos = np.clip(entity.state.p_pos, -1., 1.)
 
     def update_agent_state(self, agent):
         # set communication state (directly for now)
