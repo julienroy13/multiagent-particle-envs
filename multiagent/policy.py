@@ -1,27 +1,33 @@
 import numpy as np
 from pyglet.window import key
+from multiagent.core import Action
 
 # individual agent policy
 class Policy(object):
     def __init__(self):
         pass
-    def action(self, obs):
+    def action(self, *args):
         raise NotImplementedError()
 
 # interactive policy based on keyboard input
 # hard-coded to deal only with movement, not communication
 class InteractivePolicy(Policy):
-    def __init__(self, env, agent_index):
+    def __init__(self, env, viewer_id):
         super(InteractivePolicy, self).__init__()
         self.env = env
         # hard-coded keyboard events
         self.move = [False for i in range(4)]
         self.comm = [False for i in range(env.world.dim_c)]
         # register keyboard events with this environment's window
-        env.viewers[agent_index].window.on_key_press = self.key_press
-        env.viewers[agent_index].window.on_key_release = self.key_release
+        env.viewers[viewer_id].window.on_key_press = self.key_press
+        env.viewers[viewer_id].window.on_key_release = self.key_release
 
-    def action(self, obs):
+    def action(self, *args):
+        """
+        Arguments are ignored for InteractivePolicy. However, the call to action_callback(agent, self)
+        in multiagent.core.py requires that this callback method accepts an agent and world if provided.
+        """
+        action = Action()
         # ignore observation and just act based on keyboard events
         if self.env.discrete_action_input:
             u = 0
@@ -30,14 +36,13 @@ class InteractivePolicy(Policy):
             if self.move[2]: u = 4
             if self.move[3]: u = 3
         else:
-            u = np.zeros(5) # 5-d because of no-move action
-            if self.move[0]: u[1] += 1.0
-            if self.move[1]: u[2] += 1.0
-            if self.move[3]: u[3] += 1.0
-            if self.move[2]: u[4] += 1.0
-            if True not in self.move:
-                u[0] += 1.0
-        return np.concatenate([u, np.zeros(self.env.world.dim_c)])
+            u = np.zeros(2) # 5-d because of no-move action
+            if self.move[0]: u[0] += 0.4
+            if self.move[1]: u[0] -= 0.4
+            if self.move[3]: u[1] += 0.4
+            if self.move[2]: u[1] -= 0.4
+        action.u = u
+        return action
 
     # keyboard event callbacks
     def key_press(self, k, mod):
