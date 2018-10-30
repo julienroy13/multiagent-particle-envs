@@ -279,6 +279,7 @@ class World(object):
             # minimum allowable distance
             dist_min = entity_a.size + entity_b.size
         # softmax penetration
+        dist = dist if abs(dist) > 0.001 else 0.001
         k = self.contact_margin
         penetration = np.logaddexp(0, -(dist - dist_min)/k)*k
         force = self.contact_force * delta_pos / dist * penetration
