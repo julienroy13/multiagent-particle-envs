@@ -22,7 +22,7 @@ class Scenario(BaseScenario):
             agent.silent = True
             agent.adversary = True if i < num_adversaries else False
             agent.size = 0.05 if agent.adversary else 0.04
-            agent.accel = 3.0 if agent.adversary else 4.0
+            agent.accel = 1.5 if agent.adversary else 2.
             #agent.accel = 20.0 if agent.adversary else 25.0
             agent.max_speed = 1.0 if agent.adversary else 1.3
         # add landmarks
@@ -136,7 +136,7 @@ class Scenario(BaseScenario):
         for entity in world.landmarks:
             if not entity.boundary:
                 entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        # get relative positions to the walls that encircle the map
+        # get relative positions to the walls
         wall_pos = []
         for wall in world.walls:
             if wall.orient == 'H':
