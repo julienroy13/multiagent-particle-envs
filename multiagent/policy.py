@@ -36,7 +36,7 @@ class InteractivePolicy(Policy):
             if self.move[2]: u = 4
             if self.move[3]: u = 3
         else:
-            u = np.zeros(2) # 5-d because of no-move action
+            u = np.zeros(2)
             if self.move[0]: u[0] += 0.4
             if self.move[1]: u[0] -= 0.4
             if self.move[3]: u[1] += 0.4
@@ -55,3 +55,69 @@ class InteractivePolicy(Policy):
         if k==key.LEFT: self.move[1] = False
         if k==key.DOWN:    self.move[2] = False
         if k==key.UP:  self.move[3] = False
+
+
+class RunnerPolicy(Policy):
+    """
+    Policy for prey in simple_tag setups
+    Simply runs away from the adversaries and the limits of the environment.
+    Driven by repulsive forces inversely proportional to its distance with those entities.
+    Only creates movement action, not communication.
+    """
+    def __init__(self, max_force=1.):
+        self.max_force = max_force
+        super(RunnerPolicy, self).__init__()
+
+    def action(self, agent, world):
+        action = Action()
+        force = np.zeros(2)
+
+        # Forces from predator agents
+        for other_agent in world.agents:
+            if other_agent.adversary and agent is not other_agent:
+                force_vec = agent.state.p_pos - other_agent.state.p_pos
+                force_norm = np.sqrt(np.sum(np.square(force_vec)))
+                force += force_vec / force_norm**2 if force_norm**2 > 0.001 else force_vec / 0.001
+
+        # Forces from environment limits
+        d_right = agent.state.p_pos[0] - 1.
+        d_left = agent.state.p_pos[0] + 1.
+        d_up = agent.state.p_pos[1] - 1.
+        d_down = agent.state.p_pos[1] + 1.
+        force[0] +=  d_right / d_right**2 if d_right**2 > 0.001 else d_right / 0.001
+        force[0] +=  d_left / d_left**2 if d_left**2 > 0.001 else d_left / 0.001
+        force[1] +=  d_up / d_up**2 if d_up**2 > 0.001 else d_up / 0.001
+        force[1] +=  d_down / d_down**2 if d_down**2 > 0.001 else d_down / 0.001
+
+        force = force if np.sqrt(np.sum(force**2)) < self.max_force \
+            else self.max_force * force / np.sqrt(np.sum(force**2))
+        action.u = force
+        return action
+
+
+class RusherPolicy(Policy):
+    """
+    Policy for predators in simple_tag setups
+    Simply rushes towards the prey(s).
+    Driven by attractive forces proportional to its distance with the prey(s).
+    Only creates movement action, not communication.
+    """
+    def __init__(self, max_force=1.):
+        self.max_force = max_force
+        super(RusherPolicy, self).__init__()
+
+    def action(self, agent, world):
+        action = Action()
+        force = np.zeros(2)
+
+        # Forces from prey agents
+        for other_agent in world.agents:
+            if not other_agent.adversary and agent is not other_agent:
+                force_vec = other_agent.state.p_pos - agent.state.p_pos
+                force_norm = np.sqrt(np.sum(force_vec**2))
+                force += force_vec / force_norm**2 if force_norm**2 > 0.001 else force_vec / 0.001
+
+        force = force if np.sqrt(np.sum(force**2)) < self.max_force \
+            else self.max_force * force / np.sqrt(np.sum(force**2))
+        action.u = force
+        return action
