@@ -242,10 +242,9 @@ class World(object):
             if (p_force[i] is not None):
                 entity.state.p_vel += (p_force[i] / entity.mass) * self.dt
             if entity.max_speed is not None:
-                speed = np.sqrt(np.square(entity.state.p_vel[0]) + np.square(entity.state.p_vel[1]))
+                speed = np.sqrt(np.sum(np.square(entity.state.p_vel)))
                 if speed > entity.max_speed:
-                    entity.state.p_vel = entity.state.p_vel / np.sqrt(np.square(entity.state.p_vel[0]) +
-                                                                  np.square(entity.state.p_vel[1])) * entity.max_speed
+                    entity.state.p_vel = entity.max_speed * entity.state.p_vel / speed
             entity.state.p_pos += entity.state.p_vel * self.dt
             if self.clip_positions:
                 entity.state.p_pos = np.clip(entity.state.p_pos, -1., 1.)
