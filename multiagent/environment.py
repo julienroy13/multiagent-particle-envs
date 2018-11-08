@@ -89,7 +89,7 @@ class MultiAgentEnv(gym.Env):
         reward_n = []
         done_n = []
         info_n = {'n': []}
-        self.agents = self.world.agents # TODO: figure out the consequences of changing that too
+        self.agents = [agent for agent in self.world.agents if not agent.always_scripted] # TODO: figure out the consequences of changing that too
         # set action for each agent
         for i, agent in enumerate(self.agents):
             self._set_action(action_n[i], agent, self.action_space[i])
@@ -118,7 +118,7 @@ class MultiAgentEnv(gym.Env):
         self._reset_render()
         # record observations for each agent
         obs_n = []
-        self.agents = self.world.agents # TODO: figure out the consequences of having changed that
+        self.agents = [agent for agent in self.world.agents if not agent.always_scripted] # TODO: figure out the consequences of having changed that
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
         return obs_n

@@ -99,6 +99,7 @@ class Agent(Entity):
         self.action = Action()
         # script behavior to execute
         self.action_callback = None
+        self.always_scripted = False
 
 # multi-agent world
 class World(object):
