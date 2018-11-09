@@ -1,4 +1,7 @@
+from queue import Queue
 import numpy as np
+from numpy import sin, cos
+import scipy.integrate as integrate
 from pyglet.window import key
 from multiagent.core import Action
 
@@ -120,4 +123,93 @@ class RusherPolicy(Policy):
         force = force if np.sqrt(np.sum(force**2)) < self.max_force \
             else self.max_force * force / np.sqrt(np.sum(force**2))
         action.u = force
+        return action
+
+
+class DoublePendulumPolicy(Policy):
+    """
+    Policy for any particle
+    Follows a trajectory computed by double-pendulum dynamics
+    First it computes the trajectory of the particle. It then transforms this trajectory in shifts.
+    The trajectory shift are given as action forces to the agent (so DOES NOT perfectly follow the pendulum trajectory)
+    Restricted to movement action: no communication.
+    """
+    def __init__(self, length1=1., length2=1., mass1=1., mass2=1., gravity=3.,
+                 init_th1=120., init_th2=-10., init_w1=100., init_w2=-50., time_step=0.05, time_end=100):
+        super(DoublePendulumPolicy, self).__init__()
+
+        # Physical properties
+        self.length1 = length1
+        self.length2 = length2
+        self.mass1 = mass1
+        self.mass2 = mass2
+        self.gravity = gravity
+
+        # Initial conditions
+        self.init_th1 = init_th1
+        self.init_th2 = init_th2
+        self.init_w1 = init_w1
+        self.init_w2 = init_w2
+
+        # Simulation length and resolution
+        self.time_step = time_step
+        self.time_end = time_end
+
+        # Runs a simulation and keep it in memory
+        # The trajectory given by the simulation will be followed step by step
+        vx1, vx2, vy1, vy2 = self.simulate()
+        self.vshifts = np.vstack(self.convert_trajectory_to_forces(vx2, vy2)).T
+        self.precomputed_actions = Queue()
+        for vshift in self.vshifts:
+            self.precomputed_actions.put(vshift)
+
+    def simulate(self):
+        # create a time array from 0..100 sampled at 0.05 second steps
+        t = np.arange(0.0, self.time_end, self.time_step)
+
+        # initial state
+        init_state = np.radians([self.init_th1, self.init_th1, self.init_w1, self.init_w2])
+
+        def derivs(state, t):
+            dydx = np.zeros_like(state)
+            dydx[0] = state[1]
+
+            del_ = state[2] - state[0]
+            den1 = (self.mass1 + self.mass2) * self.length1 - self.mass2 * self.length1 * cos(del_) * cos(del_)
+            dydx[1] = (self.mass2 * self.length1 * state[1] * state[1] * sin(del_) * cos(del_) +
+                       self.mass2 * self.gravity * sin(state[2]) * cos(del_) +
+                       self.mass2 * self.length2 * state[3] * state[3] * sin(del_) -
+                       (self.mass1 + self.mass2) * self.gravity * sin(state[0])) / den1
+
+            dydx[2] = state[3]
+
+            den2 = (self.length2 / self.length1) * den1
+            dydx[3] = (-self.mass2 * self.length2 * state[3] * state[3] * sin(del_) * cos(del_) +
+                       (self.mass1 + self.mass2) * self.gravity * sin(state[0]) * cos(del_) -
+                       (self.mass1 + self.mass2) * self.length1 * state[1] * state[1] * sin(del_) -
+                       (self.mass1 + self.mass2) * self.gravity * sin(state[2])) / den2
+
+            return dydx
+
+        # integrate the ODE using scipy.integrate.
+        y = integrate.odeint(derivs, init_state, t)
+
+        # converts the angular velocities to cartesian velocities
+        vx1 = self.length1 * sin(y[:, 1])
+        vy1 = -self.length1 * cos(y[:, 1])
+
+        vx2 = self.length2 * sin(y[:, 3]) + vx1
+        vy2 = -self.length2 * cos(y[:, 3]) + vy1
+
+        return vx1, vx2, vy1, vy2
+
+    def convert_trajectory_to_forces(self, x, y):
+        x_shifts = [x[i + 1] - x[i] for i in range(len(x) - 1)]
+        y_shifts = [y[i + 1] - y[i] for i in range(len(y) - 1)]
+
+        return x_shifts, y_shifts
+
+    def action(self, agent, world):
+        action = Action()
+        action.u = 100 * self.precomputed_actions.get()
         return action
