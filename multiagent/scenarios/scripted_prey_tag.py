@@ -6,13 +6,13 @@ from multiagent.policy import RunnerPolicy
 
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, n_preds=2, n_preys=1):  # leave those default values to be able to load models trained on this script that precede 08/01/2019
         world = World()
         # set any world properties first
         world.clip_positions = True
         world.dim_c = 0
-        num_good_agents = 1
-        num_adversaries = 2
+        num_good_agents = n_preys
+        num_adversaries = n_preds
         num_agents = num_adversaries + num_good_agents
         num_landmarks = 2
         # add policy for always_scripted agents
