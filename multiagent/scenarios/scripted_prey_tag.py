@@ -25,9 +25,9 @@ class Scenario(BaseScenario):
             agent.silent = True
             agent.adversary = True if i < num_adversaries else False
             agent.size = 0.05 if agent.adversary else 0.04
-            agent.accel = 1.5 if agent.adversary else 2.
+            agent.accel = 1.5 if agent.adversary else 3.
             #agent.accel = 20.0 if agent.adversary else 25.0
-            agent.max_speed = 1.0 if agent.adversary else 1.3
+            agent.max_speed = 1.0 if agent.adversary else 2.
             agent.always_scripted = True if not agent.adversary else False
             if not agent.adversary and agent.always_scripted:
                 agent.action_callback = self.runner_policy.action
