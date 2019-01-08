@@ -155,6 +155,9 @@ class DoublePendulumPolicy(Policy):
         self.time_step = time_step
         self.time_end = time_end
 
+        self.precompute_actions()
+
+    def precompute_actions(self):
         # Runs a simulation and keep it in memory
         # The trajectory given by the simulation will be followed step by step
         vx1, vx2, vy1, vy2 = self.simulate()
