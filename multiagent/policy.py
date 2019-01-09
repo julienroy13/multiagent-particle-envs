@@ -40,10 +40,10 @@ class InteractivePolicy(Policy):
             if self.move[3]: u = 3
         else:
             u = np.zeros(2)
-            if self.move[0]: u[0] += 0.4
-            if self.move[1]: u[0] -= 0.4
-            if self.move[3]: u[1] += 0.4
-            if self.move[2]: u[1] -= 0.4
+            if self.move[0]: u[0] += 1.
+            if self.move[1]: u[0] -= 1.
+            if self.move[3]: u[1] += 1.
+            if self.move[2]: u[1] -= 1.
         action.u = u
         return action
 
