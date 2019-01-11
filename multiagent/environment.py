@@ -43,7 +43,7 @@ class MultiAgentEnv(gym.Env):
             total_action_space = []
             # physical action space
             if self.discrete_action_space:
-                u_action_space = spaces.Discrete(world.dim_p * 2 + 1)
+                u_action_space = spaces.Discrete(world.dim_p * 2)  # WARNING: SPECIAL-TEST discreteVScontinuous action spaces: I have removed the fifth action (first one) that corresponds to not_moving for discrete action space
             else:
                 u_action_space = spaces.Box(low=-agent.u_range, high=+agent.u_range, shape=(world.dim_p,))
             if agent.movable:
@@ -176,13 +176,14 @@ class MultiAgentEnv(gym.Env):
                     action[0][:] = 0.0
                     action[0][d] = 1.0
                 if self.discrete_action_space:
-                    agent.action.u[0] += action[0][1] - action[0][2]
-                    agent.action.u[1] += action[0][3] - action[0][4]
+                    agent.action.u[0] += action[0][-4] - action[0][-3] # WARNING: SPECIAL-TEST discreteVScontinuous action spaces: I have set the indexing to -1, -2 instead of 4, 3 to account for the case where there is no 5th action (the first one) that corresponds to not_moving
+                    agent.action.u[1] += action[0][-2] - action[0][-1] # WARNING: SPECIAL-TEST (same)
                 else:
                     agent.action.u = action[0]
             sensitivity = 5.0
             if agent.accel is not None:
                 sensitivity = agent.accel
+            agent.action.u = agent.action.u / (np.sqrt(np.sum(agent.action.u**2)) + 1e-8)  # WARNING: SPECIAL-TEST discreteVScontinuous action spaces: making sure the norm of the force-action is always 1. (maximum force all the time)
             agent.action.u *= sensitivity
             action = action[1:]
         if not agent.silent:
