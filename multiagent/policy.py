@@ -73,28 +73,36 @@ class RunnerPolicy(Policy):
 
     def action(self, agent, world):
         action = Action()
-        force = np.zeros(2)
+        forces = []
+        epsilon = 1e-5  # for numerical stability
+
+        # Distances from environment borders
+        d_right = agent.state.p_pos[0] - (1.+epsilon)
+        d_left = agent.state.p_pos[0] + (1.+epsilon)
+        d_up = agent.state.p_pos[1] - (1.+epsilon)
+        d_down = agent.state.p_pos[1] + (1.+epsilon)
 
         # Forces from predator agents
         for other_agent in world.agents:
             if other_agent.adversary and agent is not other_agent:
-                force_vec = agent.state.p_pos - other_agent.state.p_pos
+                force_vec = (agent.state.p_pos - other_agent.state.p_pos).reshape((1,2))
                 force_norm = np.sqrt(np.sum(np.square(force_vec)))
-                force += force_vec / force_norm**2 if force_norm**2 > 0.001 else force_vec / 0.001
+                force_agent = (force_vec*(1.+1e-5)) / (force_norm+1e-5)**3
+                forces.append(force_agent)
 
-        # Forces from environment limits
-        d_right = agent.state.p_pos[0] - 1.
-        d_left = agent.state.p_pos[0] + 1.
-        d_up = agent.state.p_pos[1] - 1.
-        d_down = agent.state.p_pos[1] + 1.
-        force[0] +=  d_right / d_right**2 if d_right**2 > 0.001 else d_right / 0.001
-        force[0] +=  d_left / d_left**2 if d_left**2 > 0.001 else d_left / 0.001
-        force[1] +=  d_up / d_up**2 if d_up**2 > 0.001 else d_up / 0.001
-        force[1] +=  d_down / d_down**2 if d_down**2 > 0.001 else d_down / 0.001
+        # Forces from environment borders
+        forces.append(np.array([np.sign(d_right) / (d_right+epsilon)**2, 0.]).reshape(1,2))
+        forces.append(np.array([np.sign(d_left) / (d_left+epsilon)**2, 0.]).reshape(1,2))
+        forces.append(np.array([0., np.sign(d_up) / (d_up+epsilon)**2]).reshape(1,2))
+        forces.append(np.array([0., np.sign(d_down) / (d_down+epsilon)**2]).reshape(1,2))
 
-        force = force if np.sqrt(np.sum(force**2)) < self.max_force \
-            else self.max_force * force / np.sqrt(np.sum(force**2))
-        action.u = force
+        # Accumulate all forces to get final force (and makes sure it is not bigger than max force)
+        final_force = np.sum(np.vstack(forces), axis=0)
+        final_force = final_force if np.sqrt(np.sum(final_force**2)) < self.max_force \
+            else self.max_force * (final_force / np.sqrt(np.sum(final_force**2)))
+
+        action.u = final_force
+
         return action
 
 
