@@ -242,7 +242,7 @@ class MultiAgentEnv(gym.Env):
             self.render_geoms = []
             self.render_geoms_xform = []
             self.comm_geoms = []
-            for entity in self.world.entities:
+            for entity in reversed(self.world.entities):  # reverse to draw landmark first
                 geom = rendering.make_circle(entity.size)
                 xform = rendering.Transform()
                 entity_comm_geoms = []
@@ -301,7 +301,7 @@ class MultiAgentEnv(gym.Env):
                 pos = self.agents[i].state.p_pos
             self.viewers[i].set_bounds(pos[0]-cam_range,pos[0]+cam_range,pos[1]-cam_range,pos[1]+cam_range)
             # update geometry positions
-            for e, entity in enumerate(self.world.entities):
+            for e, entity in enumerate(reversed(self.world.entities)):  # reverse to draw landmark first
                 self.render_geoms_xform[e].set_translation(*entity.state.p_pos)
                 if 'agent' in entity.name:
                     self.render_geoms[e].set_color(*entity.color, alpha=0.5)
