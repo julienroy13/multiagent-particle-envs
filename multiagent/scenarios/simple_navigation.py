@@ -20,8 +20,8 @@ class Scenario(BaseScenario):
             agent.collide = True
             agent.is_colliding = {other_agent.name:False for other_agent in world.agents if agent is not other_agent}
             agent.size = 0.05
-            agent.accel = 0.5
-            agent.max_speed = 0.25
+            agent.accel = 0.75
+            agent.max_speed = 0.50
         # add landmarks
         world.landmarks = [Landmark() for i in range(num_landmarks)]
         for i, landmark in enumerate(world.landmarks):
