@@ -67,6 +67,9 @@ class Entity(object):
         self.state = EntityState()
         # mass
         self.initial_mass = 1.0
+        # physical damping
+        self.damping = 0.25
+
 
     @property
     def mass(self):
@@ -116,8 +119,6 @@ class World(object):
         self.dim_color = 3
         # simulation timestep
         self.dt = 0.1
-        # physical damping
-        self.damping = 0.25
         # contact response parameters
         self.contact_force = 1e+2
         self.contact_margin = 1e-3
@@ -239,7 +240,7 @@ class World(object):
     def integrate_state(self, p_force):
         for i,entity in enumerate(self.entities):
             if not entity.movable: continue
-            entity.state.p_vel = entity.state.p_vel * (1 - self.damping)
+            entity.state.p_vel = entity.state.p_vel * (1 - entity.damping)
             if (p_force[i] is not None):
                 entity.state.p_vel += (p_force[i] / entity.mass) * self.dt
             if entity.max_speed is not None:
