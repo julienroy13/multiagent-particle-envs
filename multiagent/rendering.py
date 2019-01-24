@@ -254,6 +254,9 @@ def make_polygon(v, filled=True):
     if filled: return FilledPolygon(v)
     else: return PolyLine(v, True)
 
+def make_line(start, end):
+    return Line(start, end)
+
 def make_polyline(v):
     return PolyLine(v, False)
 

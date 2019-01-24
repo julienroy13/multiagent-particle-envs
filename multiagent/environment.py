@@ -281,6 +281,14 @@ class MultiAgentEnv(gym.Env):
                     geom.set_color(*wall.color, alpha=0.5)
                 self.render_geoms.append(geom)
 
+            for line in self.world.lines:
+                geom = rendering.make_line(start=line.start, end=line.end)
+                if line.hard:
+                    geom.set_color(*line.color)
+                else:
+                    geom.set_color(*line.color, alpha=0.25)
+                self.render_geoms.append(geom)
+
             # add geoms to viewer
             for viewer in self.viewers:
                 viewer.geoms = []
@@ -311,6 +319,13 @@ class MultiAgentEnv(gym.Env):
                             self.comm_geoms[e][ci].set_color(color, color, color)
                 else:
                     self.render_geoms[e].set_color(*entity.color)
+            # update lines positions
+            j = 0
+            for geom in self.viewers[i].geoms:
+                if type(geom) is rendering.Line:
+                    geom.start = self.world.lines[j].start
+                    geom.end = self.world.lines[j].end
+                    j += 1
             # render to display or array
             results.append(self.viewers[i].render(return_rgb_array = mode=='rgb_array'))
 
