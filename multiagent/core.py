@@ -40,6 +40,49 @@ class Wall(object):
         # color of wall
         self.color = np.array([0.0, 0.0, 0.0])
 
+class ConnectionLine(object):
+    def __init__(self, entity1, entity2, max_length=np.inf, hard=False):
+        # endpoints of the line
+        self.entity1 = entity1
+        self.entity2 = entity2
+        # the previous endpoints
+        self.previous_endpoint1 = np.zeros((2,))
+        self.previous_endpoint2 = np.zeros((2,))
+        # the original colors of endpoint entities
+        self.entity1_color = None
+        self.entity2_color = None
+        # color of the line
+        self.color = np.array([0., 0., 0.])
+        # whether line is impassable to all agents
+        self.hard = hard
+        # the maximum length of the line
+        self.max_length = max_length
+
+    @property
+    def start(self):
+        return self.entity1.state.p_pos
+
+    @property
+    def end(self):
+        return self.entity2.state.p_pos
+
+    def save_entities_colors(self):
+        self.entity1_color = np.copy(self.entity1.color)
+        self.entity2_color = np.copy(self.entity2.color)
+
+    def save_previous_endpoints(self):
+        self.previous_endpoint1 = np.copy(self.entity1.state.p_pos)
+        self.previous_endpoint2 = np.copy(self.entity2.state.p_pos)
+
+    def exceeds_max_length(self):
+        if np.sqrt(np.sum(np.square(self.start - self.end))) > self.max_length:
+            self.entity1.color = np.array([0., 0., 0.])
+            self.entity2.color = np.array([0., 0., 0.])
+            return True
+        else:
+            self.entity1.color = np.copy(self.entity1_color)
+            self.entity2.color = np.copy(self.entity2_color)
+            return False
 
 # properties and state of physical world entity
 class Entity(object):
@@ -111,6 +154,7 @@ class World(object):
         self.agents = []
         self.landmarks = []
         self.walls = []
+        self.lines = []
         # communication channel dimensionality
         self.dim_c = 0
         # position dimensionality
@@ -238,6 +282,9 @@ class World(object):
 
     # integrate physical state
     def integrate_state(self, p_force):
+        for line in self.lines:
+            if type(line) is ConnectionLine:
+                line.save_previous_endpoints()
         for i,entity in enumerate(self.entities):
             if not entity.movable: continue
             entity.state.p_vel = entity.state.p_vel * (1 - entity.damping)
@@ -250,6 +297,11 @@ class World(object):
             entity.state.p_pos += entity.state.p_vel * self.dt
             if self.clip_positions:
                 entity.state.p_pos = np.clip(entity.state.p_pos, -1., 1.)
+        for line in self.lines:
+            if type(line) is ConnectionLine:
+                if line.exceeds_max_length():
+                    line.entity1.state.p_pos = line.previous_endpoint1
+                    line.entity2.state.p_pos = line.previous_endpoint2
 
     def update_agent_state(self, agent):
         # set communication state (directly for now)
