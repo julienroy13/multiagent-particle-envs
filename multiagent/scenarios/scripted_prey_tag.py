@@ -14,7 +14,7 @@ class Scenario(BaseScenario):
         num_good_agents = n_preys
         num_adversaries = n_preds
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 2
+        num_landmarks = 0  # No landmark to avoid lucky catches since the prey is scripted and cannot avoid them
         # add policy for always_scripted agents
         self.runner_policy = RunnerPolicy()
         # add agents
@@ -25,9 +25,9 @@ class Scenario(BaseScenario):
             agent.silent = True
             agent.adversary = True if i < num_adversaries else False
             agent.size = 0.05 if agent.adversary else 0.04
-            agent.accel = 1.5 if agent.adversary else 3.
+            agent.accel = 1. if agent.adversary else 1.5
             #agent.accel = 20.0 if agent.adversary else 25.0
-            agent.max_speed = 1.0 if agent.adversary else 2.
+            agent.max_speed = 1. if agent.adversary else 1.5
             agent.always_scripted = True if not agent.adversary else False
             if not agent.adversary and agent.always_scripted:
                 agent.action_callback = self.runner_policy.action
@@ -51,15 +51,37 @@ class Scenario(BaseScenario):
             # random properties for landmarks
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.25, 0.25, 0.25])
-        # set random initial states
-        for agent in world.agents:
-            agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
-            agent.state.p_vel = np.zeros(world.dim_p)
-            agent.state.c = np.zeros(world.dim_c)
-        for i, landmark in enumerate(world.landmarks):
-            if not landmark.boundary:
-                landmark.state.p_pos = np.random.uniform(-0.9, +0.9, world.dim_p)
-                landmark.state.p_vel = np.zeros(world.dim_p)
+
+        while True:
+            # set random initial states
+            for agent in world.agents:
+                if not(agent.adversary):
+                    agent.state.p_pos = np.random.uniform(-0.8, +0.8, world.dim_p)
+                else:
+                    agent.state.p_pos = np.random.uniform(-1., +1., world.dim_p)
+                agent.state.p_vel = np.zeros(world.dim_p)
+                agent.state.c = np.zeros(world.dim_c)
+            for i, landmark in enumerate(world.landmarks):
+                if not landmark.boundary:
+                    landmark.state.p_pos = np.random.uniform(-0.9, +0.9, world.dim_p)
+                    landmark.state.p_vel = np.zeros(world.dim_p)
+            # checks for overlaps between agent's initial positions
+            overlap = 0
+            for agent_i in world.agents:  # agent_i is an prey
+                if agent_i.adversary:
+                    continue
+                for agent_j in world.agents:  # agent_j is a predator
+                    if not(agent_j.adversary):
+                        continue
+                    if agent_i is agent_j:
+                        continue
+                    if np.sqrt(np.sum(np.square(agent_i.state.p_pos - agent_j.state.p_pos))) < 1.5*(agent_i.size + agent_j.size):
+                        overlap += 1
+            # if there is a single overlap, we re-do the position initialization
+            if overlap > 0:
+                continue
+            else:
+                break
 
 
     def benchmark_data(self, agent, world):
