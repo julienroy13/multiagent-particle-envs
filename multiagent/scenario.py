@@ -8,3 +8,7 @@ class BaseScenario(object):
     # create initial conditions of the world
     def reset_world(self, world):
         raise NotImplementedError()
+    # used to modify the world after a step
+    # (e.g. to keep track of time, change landmark positions, etc.)
+    def post_step(self, world):
+        pass
