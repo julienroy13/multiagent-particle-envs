@@ -41,7 +41,7 @@ class Wall(object):
         self.color = np.array([0.0, 0.0, 0.0])
 
 class ConnectionLine(object):
-    def __init__(self, entity1, entity2, max_length=np.inf, hard=False):
+    def __init__(self, entity1, entity2, max_length=np.inf, hard=False, movable=True):
         # endpoints of the line
         self.entity1 = entity1
         self.entity2 = entity2
@@ -55,6 +55,8 @@ class ConnectionLine(object):
         self.color = np.array([0., 0., 0.])
         # whether line is impassable to all agents
         self.hard = hard
+        # whether the line can move or not (if not it prevents the entities to move as well)
+        self.movable = movable
         # the maximum length of the line
         self.max_length = max_length
 
@@ -66,6 +68,14 @@ class ConnectionLine(object):
     def end(self):
         return self.entity2.state.p_pos
 
+    @property
+    def normal(self):
+        vector = self.start - self.end
+        n1 = np.array([vector[1], -vector[0]]) / np.linalg.norm(vector)
+        n2 = np.array([-vector[1], vector[0]]) / np.linalg.norm(vector)
+        # returns the normal vector that points upward
+        return n1 if n1[1] >= 0.else n2
+
     def save_entities_colors(self):
         self.entity1_color = np.copy(self.entity1.color)
         self.entity2_color = np.copy(self.entity2.color)
@@ -75,13 +85,16 @@ class ConnectionLine(object):
         self.previous_endpoint2 = np.copy(self.entity2.state.p_pos)
 
     def exceeds_max_length(self):
-        if np.sqrt(np.sum(np.square(self.start - self.end))) > self.max_length:
-            self.entity1.color = np.array([0., 0., 0.])
-            self.entity2.color = np.array([0., 0., 0.])
-            return True
-        else:
+        return True if np.linalg.norm(self.start - self.end) > self.max_length else False
+
+    def is_movable(self):
+        if self.movable and not(self.exceeds_max_length()):
             self.entity1.color = np.copy(self.entity1_color)
             self.entity2.color = np.copy(self.entity2_color)
+            return True
+        else:
+            self.entity1.color = np.array([0., 0., 0.])
+            self.entity2.color = np.array([0., 0., 0.])
             return False
 
 # properties and state of physical world entity
@@ -278,6 +291,9 @@ class World(object):
                         if p_force[a] is None:
                             p_force[a] = 0.0
                         p_force[a] = p_force[a] + wf
+                for line in self.lines:
+                    self.apply_line_entity_elastic_collision(entity_a, line)  # Not very clean.. find a better way to integrate entity-line elastic collision than just resetting entity's speed
+
         return p_force
 
     # integrate physical state
@@ -299,7 +315,7 @@ class World(object):
                 entity.state.p_pos = np.clip(entity.state.p_pos, -1., 1.)
         for line in self.lines:
             if type(line) is ConnectionLine:
-                if line.exceeds_max_length():
+                if not(line.is_movable()):
                     line.entity1.state.p_pos = line.previous_endpoint1
                     line.entity2.state.p_pos = line.previous_endpoint2
 
@@ -385,3 +401,25 @@ class World(object):
         force[perp_dim] = np.cos(theta) * force_mag
         force[prll_dim] = np.sin(theta) * np.abs(force_mag)
         return force
+
+    # get collision forces for contact between an entity and a line
+    def apply_line_entity_elastic_collision(self, entity, line):
+        # checks if entity can enter in collision with line
+        if entity.ghost and not line.hard or line.entity1 is entity or line.entity2 is entity:
+            return
+
+        # checks if entity has entered in collision with line
+        norm = lambda x: np.sqrt(np.sum(np.square(x)))
+        dist1 = norm(entity.state.p_pos - line.start)
+        dist2 = norm(entity.state.p_pos - line.end)
+        line_length = norm(line.start - line.end)
+
+        if dist1 + dist2 <= line_length + 0.005:
+
+            entity_speed = np.sqrt(np.sum(np.square(entity.state.p_vel)))
+            R_i = entity.state.p_vel / (entity_speed + 1e-5)
+            R_r = R_i - 2 * line.normal * np.dot(R_i, line.normal)
+            entity.state.p_vel = entity_speed * R_r
+            return
+        else:
+            return
